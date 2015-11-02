@@ -5,8 +5,13 @@ __lua__
 --by stepus bros.
 
 thrustspeed=0.2
+firerecoil=1
+hitrecoil=7
 anglespeed=0.04
-gravity=0.05
+gravity=0.00
+playercolors={9,8,11,12}
+firecolors={4,2,3,1}
+thrustsounds={8,9,8,8}
 
 function _init()
 	cls()
@@ -15,7 +20,7 @@ function _init()
  p3=initplayer(3)
  p4=initplayer(4)
 
-	p={p1,p2,p3,p4}
+	players={p1,p2,p3,p4}
 
  sfx(1)
  while(btn() == 0) do
@@ -33,25 +38,26 @@ end
 
 function initplayer(id)
  p={}
- p.id=id
- p.i=id-1
+ p.i=id
  p.x=rnd(127)
 	p.y=rnd(127)
 	p.a=rnd(1)
+	p.aa=0.0
 	p.ax=0.0
 	p.ay=0.0
 	p.vx=0.0
 	p.vy=0.0
 	p.p=0
+	p.h=false
  return p
 end
 
 function _update()
 
- foreach(p,updateplayer)
+ foreach(players,updateplayer)
+	foreach(players,updatefire)
 	
-	
--- score
+-- finish
  if ((p1.p > 9)or(p2.p > 9)) then
   winner = 8
   if(p1.p>p2.p)winner = 9
@@ -65,18 +71,19 @@ end
 function updateplayer(p)
  
  --input
- p.l=btn(0,p.i)
-	p.r=btn(1,p.i)
-	p.u=btn(2,p.i)
-	p.d=btn(3,p.i)
-	p.t=btn(2,p.i)
-	p.f=btnp(5,p.i)
+ p.l=btn(0,p.i-1)
+	p.r=btn(1,p.i-1)
+	p.u=btn(2,p.i-1)
+	p.d=btn(3,p.i-1)
+	p.t=btn(2,p.i-1)
+	p.f=btnp(5,p.i-1)
 	
-	--position
+	if (p.t) sfx(thrustsounds[p.i])
+	
+ --angle
 	if (p.l)p.a-=anglespeed
 	if (p.r)p.a+=anglespeed
-	
-	--angle
+	--p.a+=p.aa
 	p.ax=sin(p.a)
 	p.ay=cos(-p.a)
 	
@@ -86,8 +93,11 @@ function updateplayer(p)
 	--friction
 	p.vx-=p.vx*0.05
 	p.vy-=p.vy*0.05
+	p.aa-=p.aa*0.1
 
  --velocity
+ if (p.f) p.vx-=(p.ax*firerecoil)
+	if (p.f) p.vy-=(p.ay*firerecoil)
 	if (p.t) p.vx+=(p.ax*thrustspeed)
 	if (p.t) p.vy+=(p.ay*thrustspeed)
 	p.x+=p.vx
@@ -95,7 +105,14 @@ function updateplayer(p)
 	
 	--restrictions
 	if (p.a>0)p.a=p.a%1
-	if (p.x>127)then
+	if (p.aa>5)paa=5
+	
+	bounce(p)
+	
+end
+
+function bounce(p)
+if (p.x>127)then
 	 p.x = 127
 	 p.vx*=-1
 	 
@@ -121,80 +138,80 @@ function updateplayer(p)
 	end
 end
 
+function updatefire(p)
+
+ if(p.f) then
+  sfx(11)
+  
+  for i=1,4 do --todo: count
+   if i ~= p.i then
+    playerfire(p,players[i])
+   end
+  end
+ end
+ 
+end
+
+function playerfire(p,p1)
+ for i = 5,200 do
+  if((p.x+(p.ax*i) > p1.x-3)and
+     (p.x+(p.ax*i) < p1.x+3))and
+     ((p.y+(p.ay*i) > p1.y-3)and
+     (p.y+(p.ay*i) < p1.y+3))then
+   
+   p1.h=true   
+   p1.vx+=(p.ax*hitrecoil)
+	  p1.vy+=(p.ay*hitrecoil)
+   
+   sfx(14)
+   
+   p.p += 1
+   
+   break
+  end
+ end
+end
+
 function _draw() 
  cls()
  
- if(p1.f)rectfill(0,0,127,127,2)
- if(p2.f)rectfill(0,0,127,127,13)
+ foreach(players,drawplayer)
+ 
+ --stars
  for i = 1,5 do
   circfill(rnd(127),rnd(127),0,rnd(3)+5)
  end
- color(9) 
- line(p1.x,p1.y,p1.x+(p1.ax*4),p1.y+(p1.ay*4))
- circfill(p1.x,p1.y,2)
- rectfill(p1.x-1,p1.y-1,p1.x-1,p1.y-1,7)
- if(p1.t) then
-  line(p1.x-(p1.ax*5),p1.y-(p1.ay*5),p1.x-(p1.ax*7),p1.y-(p1.ay*7),10)
-  sfx(8)
- end
- if(p1.f) then
-  sfx(10)
-  for i = 5,200 do
-   if((p1.x+(p1.ax*i) > p2.x-3)and
-     (p1.x+(p1.ax*i) < p2.x+3))and
-     ((p1.y+(p1.ay*i) > p2.y-3)and
-     (p1.y+(p1.ay*i) < p2.y+3)) then
-    sfx(13)
-    circfill(p2.x,p2.y,6,7)
-    p2.x = rnd(127)
-    p2.y = rnd(127)
-    p2.a = rnd(1)
-    p1.p += 1
-   end
-  line(p1.x+(p1.ax*5),p1.y+(p1.ay*5),p1.x+(p1.ax*200),p1.y+(p1.ay*200),7)
-  end
- end 
- color(8)
- line(p2.x,p2.y,p2.x+(p2.ax*4),p2.y+(p2.ay*4))
- circfill(p2.x,p2.y,2)
-  rectfill(p2.x-1,p2.y-1,p2.x-1,p2.y-1,7)
- if(p2.t) then
-  line(p2.x-(p2.ax*5),p2.y-(p2.ay*5), rnd(2)-1 + p2.x-(p2.ax*7),rnd(2)-1+p2.y-(p2.ay*7),10)
-  
-  sfx(9)
- end
- if(p2.f) then
-  sfx(11)
-  for i = 5,200 do
-  if((p2.x+(p2.ax*i) > p1.x-3)and
-     (p2.x+(p2.ax*i) < p1.x+3))and
-     ((p2.y+(p2.ay*i) > p1.y-3)and
-     (p2.y+(p2.ay*i) < p1.y+3)) then
-   sfx(14)
-   circfill(p1.x,p1.y,6,7)
-   p1.x = rnd(127)
-   p1.y = rnd(127)
-   p1.a = rnd(1)
-   p2.p += 1
-  end
-  line(p2.x+(p2.ax*5),p2.y+(p2.ay*5),p2.x+(p2.ax*200),p2.y+(p2.ay*200),7)
-
- end
-   
- end
-
+ 
  print (p1.p,0,0,9)
  print (p2.p,120,0,8)
  
- color(11)
- line(p3.x,p3.y,p3.x+(p3.ax*4),p3.y+(p3.ay*4))
- circfill(p3.x,p3.y,2)
- rectfill(p3.x-1,p3.y-1,p3.x-1,p3.y-1,7)
+end
 
- color(12)
- line(p4.x,p4.y,p4.x+(p4.ax*4),p4.y+(p4.ay*4))
- circfill(p4.x,p4.y,2)
- rectfill(p4.x-1,p4.y-1,p4.x-1,p4.y-1,7)
+function drawplayer(p)
+
+ --fire
+ if(p.f) then 
+  rectfill(0,0,127,127,firecolors[p.i])
+  line(p.x+(p.ax*5),p.y+(p.ay*5),p.x+(p.ax*200),p.y+(p.ay*200),7)
+ end
+ 
+ --rocket
+ color(playercolors[p.i]) 
+ line(p.x,p.y,p.x+(p.ax*4),p.y+(p.ay*4))
+ circfill(p.x,p.y,2)
+ rectfill(p.x-1,p.y-1,p.x-1,p.y-1,7)
+ 
+ --thrust
+ if(p.t) then
+  line(p.x-(p.ax*5),p.y-(p.ay*5), rnd(2)-1 + p.x-(p.ax*7),rnd(2)-1+p.y-(p.ay*7),10)
+ end
+ 
+ --hit
+ if(p.h) then
+  circfill(p.x,p.y,6,7)
+  p.h=false
+ end
+
 end
 __gfx__
 00000000006660000000000000666000000000000066600000000000006660000000000000666000000000000066600000000000006660000000000000000000
